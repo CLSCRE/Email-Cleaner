@@ -1,8 +1,8 @@
-import time
 
 import streamlit as st
 import pandas as pd
 import requests
+import time
 from io import BytesIO
 
 # --- Authentication ---
@@ -47,46 +47,49 @@ if uploaded_file:
 
         st.info(f"📄 Scanned {total_scanned} cells — Found {len(valid_emails)} valid emails, {blanks} blank/skipped.")
 
-        def verify_email(email):
-            url = "https://emailvalidation.abstractapi.com/v1/"
-            params = {"api_key": api_key, "email": email}
-            try:
-                response = requests.get(url, params=params)
-                if response.status_code == 429:
-                    return {"email": email, "error": "Rate limited"}
-                if response.ok:
-                    data = response.json()
-                    return {
-                        "email": email,
-                        "is_valid_format": data["is_valid_format"]["value"],
-                        "is_mx_found": data["is_mx_found"]["value"],
-                        "is_smtp_valid": data["is_smtp_valid"]["value"],
-                        "is_disposable": data["is_disposable_email"]["value"],
-                        "is_role": data["is_role_email"]["value"],
-                        "quality_score": data["quality_score"]
-                    }
-                else:
-                    return {"email": email, "error": f"HTTP {response.status_code}"}
-            except Exception as e:
-                return {"email": email, "error": str(e)}
+        if len(valid_emails) == 0:
+            st.warning("No valid email addresses found in your file.")
+        else:
+            def verify_email(email):
+                url = "https://emailvalidation.abstractapi.com/v1/"
+                params = {"api_key": api_key, "email": email}
+                try:
+                    response = requests.get(url, params=params)
+                    if response.status_code == 429:
+                        return {"email": email, "error": "Rate limited"}
+                    if response.ok:
+                        data = response.json()
+                        return {
+                            "email": email,
+                            "is_valid_format": data["is_valid_format"]["value"],
+                            "is_mx_found": data["is_mx_found"]["value"],
+                            "is_smtp_valid": data["is_smtp_valid"]["value"],
+                            "is_disposable": data["is_disposable_email"]["value"],
+                            "is_role": data["is_role_email"]["value"],
+                            "quality_score": data["quality_score"]
+                        }
+                    else:
+                        return {"email": email, "error": f"HTTP {response.status_code}"}
+                except Exception as e:
+                    return {"email": email, "error": str(e)}
 
-        results = []
-        for email in valid_emails:
-            results.append(verify_email(email))
-            time.sleep(0.35)
-        result_df = pd.DataFrame(results)
+            st.info("⏳ Verifying emails... please wait")
+            results = []
+            for email in valid_emails:
+                results.append(verify_email(email))
+                time.sleep(0.35)
 
-        st.success("✅ Verification complete!")
-        st.dataframe(result_df)
+            result_df = pd.DataFrame(results)
+            st.success("✅ Verification complete!")
+            st.dataframe(result_df)
 
-        # Combine original + results in Excel with two sheets
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name="Original Data", index=False)
-            result_df.to_excel(writer, sheet_name="Verification Results", index=False)
-        st.download_button(
-            "📥 Download Excel with Results",
-            data=output.getvalue(),
-            file_name="email_verification_output.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, sheet_name="Original Data", index=False)
+                result_df.to_excel(writer, sheet_name="Verification Results", index=False)
+            st.download_button(
+                "📥 Download Excel with Results",
+                data=output.getvalue(),
+                file_name="email_verification_output.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
