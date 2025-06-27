@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 
 # --- Authentication ---
-CREDENTIALS = {"admin": "mypassword", "user": "test123"}
+CREDENTIALS = {"trevor@clscre.com": "Clscre654321@"}
 auth_placeholder = st.empty()
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
