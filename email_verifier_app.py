@@ -13,32 +13,48 @@ if "authenticated" not in st.session_state:
 
 if not st.session_state.authenticated:
     with auth_placeholder.container():
-        st.subheader("🔐 Login Required")
+        st.markdown("""<h2 style='text-align:center;'>🔐 Login Required</h2>""", unsafe_allow_html=True)
         user = st.text_input("Username")
         pw = st.text_input("Password", type="password")
         if st.button("Login"):
             if user in CREDENTIALS and CREDENTIALS[user] == pw:
                 st.session_state.authenticated = True
                 auth_placeholder.empty()
+                st.rerun()
             else:
                 st.error("Invalid credentials.")
     st.stop()
 
-# --- App Title and Logo ---
-st.image("https://clscre.com/wp-content/uploads/2023/01/CLS-CRE-LOGO-2023-white-background.png", width=200)
-st.title("📧 Email Cleaner +")
+# --- Animated Logo & Welcome ---
+st.markdown("""
+    <style>
+        @keyframes float {
+            0% { transform: translatey(0px); }
+            50% { transform: translatey(-10px); }
+            100% { transform: translatey(0px); }
+        }
+        .floating-logo {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+    <div style="text-align:center;">
+        <img src="https://clscre.com/wp-content/uploads/2023/01/CLS-CRE-LOGO-2023-white-background.png" width="200" class="floating-logo"/>
+    </div>
+""", unsafe_allow_html=True)
 
-# File uploader and API key
-uploaded_file = st.file_uploader("Upload CoStar Spreadsheet", type=[".xlsx"])
+st.markdown("""<h1 style='text-align:center;'>📧 Email Cleaner +</h1>""", unsafe_allow_html=True)
+st.markdown("""<p style='text-align:center;'>Upload your spreadsheet to validate emails using Abstract API</p>""", unsafe_allow_html=True)
+
+# --- File upload & API key ---
+uploaded_file = st.file_uploader("📤 Upload CoStar Spreadsheet (.xlsx)", type=[".xlsx"])
 api_key = st.secrets["ABSTRACT_API_KEY"]
-st.success("🔑 Using stored Abstract API key from secrets.")
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
     email_cols = [col for col in df.columns if 'email' in col.lower()]
 
     if not email_cols:
-        st.warning("No email columns found with 'email' in the header.")
+        st.warning("⚠️ No email columns found with 'email' in the header.")
     else:
         emails = pd.unique(df[email_cols].values.ravel())
         total_scanned = len(emails)
@@ -48,7 +64,7 @@ if uploaded_file:
         st.info(f"📄 Scanned {total_scanned} cells — Found {len(valid_emails)} valid emails, {blanks} blank/skipped.")
 
         if len(valid_emails) == 0:
-            st.warning("No valid email addresses found in your file.")
+            st.warning("⚠️ No valid email addresses found in your file.")
         else:
             def verify_email(email):
                 url = "https://emailvalidation.abstractapi.com/v1/"
@@ -74,9 +90,11 @@ if uploaded_file:
                     return {"email": email, "error": str(e)}
 
             st.info("⏳ Verifying emails... please wait")
+            progress = st.progress(0)
             results = []
-            for email in valid_emails:
+            for i, email in enumerate(valid_emails):
                 results.append(verify_email(email))
+                progress.progress((i + 1) / len(valid_emails))
                 time.sleep(0.35)
 
             result_df = pd.DataFrame(results)
