@@ -28,7 +28,8 @@ st.title("📧 Email Cleaner +")
 
 # File uploader and API key input
 uploaded_file = st.file_uploader("Upload CoStar Spreadsheet", type=[".xlsx"])
-api_key = st.text_input("Enter Abstract API Key", type="password")
+api_key = st.secrets["ABSTRACT_API_KEY"]
+st.success("🔑 Using stored Abstract API key from secrets.")
 
 if uploaded_file and api_key:
     df = pd.read_excel(uploaded_file)
